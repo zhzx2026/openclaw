@@ -413,7 +413,7 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: env.OPENAI_MODEL || "gpt-5-mini",
+      model: env.OPENAI_MODEL || "gpt-5.4-mini",
       store: false,
       instructions: OPENCLAW_INSTRUCTIONS,
       max_output_tokens: 1400,
@@ -790,7 +790,8 @@ function isContextSupported(contentType: string, fileName: string): boolean {
 }
 
 function resolveOpenAIBaseUrl(env: Env): string {
-  return (env.OPENAI_BASE_URL || "https://api.openai.com").replace(/\/+$/g, "");
+  const base = (env.OPENAI_BASE_URL || "https://api.openai.com").replace(/\/+$/g, "");
+  return base.endsWith("/v1") ? base.slice(0, -3) : base;
 }
 
 function isSecureRequest(request: Request): boolean {

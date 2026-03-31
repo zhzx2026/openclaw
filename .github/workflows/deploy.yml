@@ -34,9 +34,10 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
         run: |
-          for name in CHAT_PASSWORD CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID OPENAI_API_KEY SESSION_SECRET; do
+          for name in CHAT_PASSWORD CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID OPENAI_API_KEY OPENAI_BASE_URL SESSION_SECRET; do
             if [ -z "${!name}" ]; then
               echo "Missing GitHub secret: $name" >&2
               exit 1
@@ -58,9 +59,13 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
         run: |
           printf '%s' "$OPENAI_API_KEY" | npx wrangler secret put OPENAI_API_KEY
+          if [ -n "$OPENAI_BASE_URL" ]; then
+            printf '%s' "$OPENAI_BASE_URL" | npx wrangler secret put OPENAI_BASE_URL
+          fi
           printf '%s' "$SESSION_SECRET" | npx wrangler secret put SESSION_SECRET
           printf '%s' "$CHAT_PASSWORD" | npx wrangler secret put CHAT_PASSWORD
 

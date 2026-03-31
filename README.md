@@ -25,6 +25,7 @@ Password-protected chat app on Cloudflare Workers with:
 3. Fill `.dev.vars`:
 
    - `OPENAI_API_KEY=<your key>`
+   - `OPENAI_BASE_URL=https://api.openai.com` or your OpenAI-compatible base URL
    - `SESSION_SECRET=<long random string>`
    - `CHAT_PASSWORD=123567`
 
@@ -47,6 +48,7 @@ Add these repository secrets before enabling auto deploy:
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 - `OPENAI_API_KEY`
+- `OPENAI_BASE_URL` if you use a compatible gateway instead of the official API
 - `SESSION_SECRET`
 - `CHAT_PASSWORD` set to `123567`
 

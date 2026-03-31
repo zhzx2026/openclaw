@@ -16,7 +16,7 @@
   ],
   "vars": {
     "APP_NAME": "OpenClaw Chat",
-    "OPENAI_MODEL": "gpt-5-mini"
+    "OPENAI_MODEL": "gpt-5.4-mini"
   },
   "routes": [
     {
@@ -25,6 +25,6 @@
     }
   ],
   "secrets": {
-    "required": ["OPENAI_API_KEY", "SESSION_SECRET", "CHAT_PASSWORD"]
+    "required": ["OPENAI_API_KEY", "OPENAI_BASE_URL", "SESSION_SECRET", "CHAT_PASSWORD"]
   }
 }
