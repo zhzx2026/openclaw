@@ -1,0 +1,30 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "openclaw-chat",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-03-31",
+  "workers_dev": false,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "r2_buckets": [
+    {
+      "binding": "CHAT_FILES",
+      "bucket_name": "openclaw-chat-files"
+    }
+  ],
+  "vars": {
+    "APP_NAME": "OpenClaw Chat",
+    "OPENAI_MODEL": "gpt-5-mini"
+  },
+  "routes": [
+    {
+      "pattern": "chat.sunsetzhong.indevs.in",
+      "custom_domain": true
+    }
+  ],
+  "secrets": {
+    "required": ["OPENAI_API_KEY", "SESSION_SECRET", "CHAT_PASSWORD"]
+  }
+}

@@ -1,0 +1,3 @@
+OPENAI_API_KEY=sk-...
+SESSION_SECRET=replace-with-a-long-random-string
+CHAT_PASSWORD=123567

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>OpenClaw Chat</title>
+    <meta
+      name="description"
+      content="Password-protected Cloudflare Worker chat with OpenClaw, image upload, and file download."
+    />
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <div class="ambient ambient-left"></div>
+    <div class="ambient ambient-right"></div>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="brand-card">
+          <p class="eyebrow">Cloudflare Worker</p>
+          <h1 id="appName">OpenClaw Chat</h1>
+          <p class="lead">
+            使用密码登录后即可和 OpenClaw 对话，并把图片、PDF、文本文件一并交给模型参考。
+          </p>
+        </div>
+
+        <section class="panel" id="sessionPanel">
+          <div class="panel-head">
+            <h2>登录</h2>
+            <span class="dot"></span>
+          </div>
+          <form id="loginForm" class="stack">
+            <label class="field">
+              <span>访问密码</span>
+              <input
+                id="passwordInput"
+                type="password"
+                name="password"
+                autocomplete="current-password"
+                placeholder="输入密码"
+                required
+              />
+            </label>
+            <button class="primary-button" type="submit" id="loginButton">
+              登录到 OpenClaw
+            </button>
+          </form>
+
+          <div id="sessionSummary" class="stack hidden">
+            <p class="pill">已登录</p>
+            <p class="hint">附件会保存到 R2，登录态保存在安全 cookie。</p>
+            <button class="ghost-button" type="button" id="logoutButton">
+              退出登录
+            </button>
+          </div>
+        </section>
+
+        <section class="panel disabled" id="libraryPanel">
+          <div class="panel-head">
+            <h2>附件库</h2>
+            <span class="muted" id="fileCount">0 个文件</span>
+          </div>
+
+          <label class="upload-zone" for="fileInput" id="uploadZone">
+            <input id="fileInput" type="file" multiple />
+            <strong>上传图片或文件</strong>
+            <span>支持下载，常见图片 / PDF / 文本文件可直接参与对话。</span>
+          </label>
+
+          <div class="pending-box">
+            <div class="panel-head compact">
+              <h3>本条消息将附带</h3>
+              <button class="text-button" type="button" id="clearPendingButton">
+                清空
+              </button>
+            </div>
+            <div id="pendingAttachments" class="chip-wrap">
+              <p class="hint">还没有附带任何文件。</p>
+            </div>
+          </div>
+
+          <div id="fileList" class="file-list">
+            <p class="hint">登录后会显示最近上传的文件。</p>
+          </div>
+        </section>
+      </aside>
+
+      <main class="chat-shell">
+        <header class="hero">
+          <div>
+            <p class="eyebrow">openclaw / edge chat</p>
+            <h2>把问题、图片和资料一起发给它</h2>
+          </div>
+          <div class="hero-badges">
+            <span class="badge">Password Gate</span>
+            <span class="badge">R2 Files</span>
+            <span class="badge">Responses API</span>
+          </div>
+        </header>
+
+        <section id="noticeBanner" class="notice hidden"></section>
+
+        <section id="messages" class="messages">
+          <article class="empty-state" id="emptyState">
+            <p class="eyebrow">Ready when you are</p>
+            <h3>先登录，再开始你的第一条消息。</h3>
+            <p>
+              上传后的文件会出现在左侧附件库里，点击“附加到消息”即可让它参与对话。
+            </p>
+          </article>
+        </section>
+
+        <form id="composer" class="composer disabled">
+          <label class="sr-only" for="messageInput">消息内容</label>
+          <textarea
+            id="messageInput"
+            rows="4"
+            placeholder="问点什么，或者说明你想让 OpenClaw 结合哪些附件来回答。"
+          ></textarea>
+          <div class="composer-bar">
+            <p class="hint" id="composerHint">
+              `Enter` 发送，`Shift + Enter` 换行。
+            </p>
+            <button class="primary-button" type="submit" id="sendButton">
+              发送
+            </button>
+          </div>
+        </form>
+      </main>
+    </div>
+  </body>
+</html>
