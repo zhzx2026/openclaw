@@ -277,6 +277,18 @@ h3 {
   gap: 0.5rem;
 }
 
+.ghost-field {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .field span {
   font-size: 0.92rem;
   color: var(--ink-soft);
@@ -548,6 +560,7 @@ textarea {
   gap: 0.65rem;
   color: var(--ink-soft);
   font-size: 0.92rem;
+  line-height: 1.45;
 }
 
 .tip-line {
@@ -604,6 +617,18 @@ textarea {
   .workspace {
     grid-template-columns: 1fr;
     min-height: auto;
+  }
+
+  .conversation-column {
+    order: 1;
+  }
+
+  .column-right {
+    order: 2;
+  }
+
+  .column-left {
+    order: 3;
   }
 
   .file-list,

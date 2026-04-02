@@ -2,3 +2,5 @@ node_modules
 .wrangler
 .dev.vars
 npm-debug.log*
+.playwright-cli
+output/playwright

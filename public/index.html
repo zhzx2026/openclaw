@@ -11,6 +11,7 @@
       name="description"
       content="Password-protected Cloudflare Worker chat with OpenClaw, image upload, and file download."
     />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/styles.css" />
     <script type="module" src="/app.js"></script>
   </head>
@@ -67,6 +68,16 @@
             </div>
 
             <form id="loginForm" class="stack">
+              <label class="ghost-field" aria-hidden="true">
+                <span>用户名</span>
+                <input
+                  type="text"
+                  name="username"
+                  autocomplete="username"
+                  value="openclaw"
+                  tabindex="-1"
+                />
+              </label>
               <label class="field">
                 <span>访问密码</span>
                 <input
