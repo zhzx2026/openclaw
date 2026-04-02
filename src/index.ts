@@ -102,6 +102,8 @@ const MAX_ATTACHMENTS_PER_MESSAGE = 8;
 const MAX_CONTEXT_BYTES = 6 * 1024 * 1024;
 const MAX_CONVERSATION_MESSAGES = 14;
 const MAX_TEXT_CHARS = 10_000;
+const OPENAI_REQUEST_TIMEOUT_MS = 25_000;
+const OPENAI_RETRY_COUNT = 1;
 const SUPPORTED_DOC_TYPES = new Set([
   "application/json",
   "application/pdf",
@@ -332,6 +334,7 @@ async function handleDownload(rawId: string, request: Request, env: Env): Promis
 }
 
 async function handleChat(request: Request, env: Env): Promise<Response> {
+  const requestId = request.headers.get("cf-ray") || crypto.randomUUID();
   const body = await readJson<ChatRequestBody>(request);
   const rawMessages = Array.isArray(body.messages) ? body.messages : [];
 
@@ -406,38 +409,18 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
     return json({ error: "No usable chat content was found." }, 400);
   }
 
-  const response = await fetch(`${resolveOpenAIBaseUrl(env)}/v1/responses`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: env.OPENAI_MODEL || "gpt-5.4-mini",
-      store: false,
-      instructions: OPENCLAW_INSTRUCTIONS,
-      max_output_tokens: 1400,
-      input,
-      text: {
-        format: {
-          type: "text",
-        },
-      },
-    }),
-  });
-
-  const data = (await response.json()) as Record<string, unknown>;
-
-  if (!response.ok) {
+  const upstream = await requestOpenAIResponse(env, input, requestId);
+  if (!upstream.ok) {
     return json(
       {
-        error: extractOpenAIError(data) || "OpenAI request failed.",
+        error: upstream.error,
+        requestId,
       },
-      response.status,
+      upstream.status,
     );
   }
 
-  const text = extractAssistantText(data);
+  const text = extractAssistantText(upstream.data);
 
   return json({
     message: {
@@ -445,8 +428,120 @@ async function handleChat(request: Request, env: Env): Promise<Response> {
       text,
     },
     warnings,
-    usage: data.usage ?? null,
+    usage: upstream.data.usage ?? null,
+    requestId,
   });
+}
+
+async function requestOpenAIResponse(
+  env: Env,
+  input: Array<Record<string, unknown>>,
+  requestId: string,
+): Promise<
+  | { ok: true; data: Record<string, unknown> }
+  | { ok: false; error: string; status: number }
+> {
+  const url = `${resolveOpenAIBaseUrl(env)}/v1/responses`;
+  const payload = {
+    model: env.OPENAI_MODEL || "gpt-5.4-mini",
+    store: false,
+    instructions: OPENCLAW_INSTRUCTIONS,
+    max_output_tokens: 1400,
+    input,
+    text: {
+      format: {
+        type: "text",
+      },
+    },
+  };
+
+  let lastErrorMessage = "OpenAI request failed.";
+  let lastStatus = 502;
+
+  for (let attempt = 0; attempt <= OPENAI_RETRY_COUNT; attempt += 1) {
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env.OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(OPENAI_REQUEST_TIMEOUT_MS),
+      });
+
+      const raw = await response.text();
+      const data = safeJsonParse(raw);
+
+      if (!response.ok) {
+        lastStatus = normalizeUpstreamStatus(response.status);
+        const errorData = data && typeof data === "object" ? (data as Record<string, unknown>) : null;
+        lastErrorMessage =
+          (errorData ? extractOpenAIError(errorData) : null) ||
+          summarizeUpstreamBody(raw, response.status) ||
+          "OpenAI request failed.";
+
+        console.error("chat_upstream_http_error", {
+          attempt,
+          requestId,
+          status: response.status,
+          bodyPreview: raw.slice(0, 500),
+        });
+
+        if (shouldRetry(response.status, attempt)) {
+          await sleep(250 * (attempt + 1));
+          continue;
+        }
+
+        return {
+          ok: false,
+          error: lastErrorMessage,
+          status: lastStatus,
+        };
+      }
+
+      if (!data || typeof data !== "object") {
+        const fallbackText = raw.trim();
+        return {
+          ok: true,
+          data: {
+            output: [
+              {
+                type: "message",
+                role: "assistant",
+                content: [{ type: "output_text", text: fallbackText || "OpenClaw returned an empty response." }],
+              },
+            ],
+          },
+        };
+      }
+
+      return {
+        ok: true,
+        data: data as Record<string, unknown>,
+      };
+    } catch (error) {
+      lastStatus = 502;
+      lastErrorMessage = formatThrownError(error);
+
+      console.error("chat_upstream_fetch_error", {
+        attempt,
+        requestId,
+        error: lastErrorMessage,
+      });
+
+      if (shouldRetry(lastStatus, attempt)) {
+        await sleep(250 * (attempt + 1));
+        continue;
+      }
+    }
+  }
+
+  return {
+    ok: false,
+    error: `上游聊天服务暂时不可用：${lastErrorMessage}`,
+    status: lastStatus,
+  };
 }
 
 async function serveStatic(request: Request, env: Env): Promise<Response> {
@@ -792,6 +887,53 @@ function isContextSupported(contentType: string, fileName: string): boolean {
 function resolveOpenAIBaseUrl(env: Env): string {
   const base = (env.OPENAI_BASE_URL || "https://api.openai.com").replace(/\/+$/g, "");
   return base.endsWith("/v1") ? base.slice(0, -3) : base;
+}
+
+function safeJsonParse(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function summarizeUpstreamBody(body: string, status: number): string | null {
+  const trimmed = body.trim();
+  if (!trimmed) {
+    return `上游服务返回空响应（HTTP ${status}）。`;
+  }
+
+  if (trimmed.startsWith("<!DOCTYPE html") || trimmed.startsWith("<html")) {
+    return `上游服务返回了 HTML 错误页（HTTP ${status}）。`;
+  }
+
+  return trimmed.slice(0, 240);
+}
+
+function normalizeUpstreamStatus(status: number): number {
+  if (status >= 500) {
+    return 502;
+  }
+
+  return status;
+}
+
+function shouldRetry(status: number, attempt: number): boolean {
+  return attempt < OPENAI_RETRY_COUNT && status >= 500;
+}
+
+function formatThrownError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return typeof error === "string" ? error : "unknown error";
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 function isSecureRequest(request: Request): boolean {

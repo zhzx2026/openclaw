@@ -506,7 +506,8 @@ async function api(path, init = {}) {
 
 function formatApiError(payload, status) {
   if (typeof payload !== "string") {
-    return payload?.error || payload?.message || "请求失败";
+    const baseMessage = payload?.error || payload?.message || "请求失败";
+    return payload?.requestId ? `${baseMessage}（请求 ID: ${payload.requestId}）` : baseMessage;
   }
 
   const trimmed = payload.trim();
