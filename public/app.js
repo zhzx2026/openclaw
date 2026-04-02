@@ -497,14 +497,33 @@ async function api(path, init = {}) {
       render();
     }
 
-    const message =
-      typeof payload === "string"
-        ? payload
-        : payload?.error || payload?.message || "请求失败";
+    const message = formatApiError(payload, response.status);
     throw new Error(message);
   }
 
   return payload;
+}
+
+function formatApiError(payload, status) {
+  if (typeof payload !== "string") {
+    return payload?.error || payload?.message || "请求失败";
+  }
+
+  const trimmed = payload.trim();
+  if (!trimmed.startsWith("<!DOCTYPE html") && !trimmed.startsWith("<html")) {
+    return trimmed || `请求失败（HTTP ${status}）`;
+  }
+
+  const errorCode = trimmed.match(/cf-error-code">(\d+)</)?.[1];
+  const rayId = trimmed.match(/Cloudflare Ray ID:\s*<strong[^>]*>([^<]+)/i)?.[1];
+
+  if (errorCode) {
+    return rayId
+      ? `服务暂时异常（Cloudflare ${errorCode}，Ray ID: ${rayId}），请稍后重试。`
+      : `服务暂时异常（Cloudflare ${errorCode}），请稍后重试。`;
+  }
+
+  return `服务暂时返回了一个 HTML 错误页（HTTP ${status}），请稍后重试。`;
 }
 
 function setBusy(button, busy, label) {
