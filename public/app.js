@@ -312,12 +312,12 @@ function render() {
   elements.fileInput.disabled = !state.loggedIn || state.uploading;
   elements.messageInput.disabled = !state.loggedIn || state.sending;
   elements.sendButton.disabled = !state.loggedIn || state.sending;
-  elements.sendButton.textContent = state.sending ? "发送中..." : "发送";
+  setSendButtonLabel(state.sending ? "Sending..." : "Send");
   elements.uploadZone.classList.toggle("busy", state.uploading);
-  elements.fileCount.textContent = `${state.files.length} 个文件`;
+  elements.fileCount.textContent = String(state.files.length);
   elements.emptyState.classList.toggle("hidden", state.messages.length > 0);
   elements.composerHint.textContent = state.loggedIn
-    ? "Enter 发送，Shift + Enter 换行。"
+    ? "AI can make mistakes. Consider verifying important information."
     : "登录后才能发送消息。";
 
   renderPendingAttachments();
@@ -327,16 +327,15 @@ function render() {
 
 function renderPendingAttachments() {
   const attachments = getPendingAttachments();
+  const pendingRow = elements.pendingAttachments.closest(".pending-row");
   elements.pendingAttachments.innerHTML = "";
 
   if (attachments.length === 0) {
-    const hint = document.createElement("p");
-    hint.className = "hint";
-    hint.textContent = "还没有附带任何文件。";
-    elements.pendingAttachments.appendChild(hint);
+    pendingRow?.classList.add("hidden");
     return;
   }
 
+  pendingRow?.classList.remove("hidden");
   attachments.forEach((file) => {
     const chip = document.createElement("button");
     chip.type = "button";
@@ -348,6 +347,16 @@ function renderPendingAttachments() {
     });
     elements.pendingAttachments.appendChild(chip);
   });
+}
+
+function setSendButtonLabel(label) {
+  const labelNode = elements.sendButton.querySelector(".send-label");
+  if (labelNode) {
+    labelNode.textContent = label;
+    return;
+  }
+
+  elements.sendButton.textContent = label;
 }
 
 function renderFileList() {
