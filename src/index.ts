@@ -102,8 +102,9 @@ const MAX_ATTACHMENTS_PER_MESSAGE = 8;
 const MAX_CONTEXT_BYTES = 6 * 1024 * 1024;
 const MAX_CONVERSATION_MESSAGES = 14;
 const MAX_TEXT_CHARS = 10_000;
-const OPENAI_REQUEST_TIMEOUT_MS = 25_000;
-const OPENAI_RETRY_COUNT = 1;
+const OPENAI_TOTAL_TIMEOUT_MS = 25_000;
+const OPENAI_MAX_ATTEMPTS = 3;
+const OPENAI_MAX_PER_ATTEMPT_TIMEOUT_MS = 16_000;
 const SUPPORTED_DOC_TYPES = new Set([
   "application/json",
   "application/pdf",
@@ -457,8 +458,19 @@ async function requestOpenAIResponse(
 
   let lastErrorMessage = "OpenAI request failed.";
   let lastStatus = 502;
+  const deadline = Date.now() + OPENAI_TOTAL_TIMEOUT_MS;
 
-  for (let attempt = 0; attempt <= OPENAI_RETRY_COUNT; attempt += 1) {
+  for (let attempt = 0; attempt < OPENAI_MAX_ATTEMPTS; attempt += 1) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 400) {
+      break;
+    }
+
+    const attemptTimeoutMs = Math.max(
+      2500,
+      Math.min(OPENAI_MAX_PER_ATTEMPT_TIMEOUT_MS, remainingMs),
+    );
+
     try {
       const response = await fetch(url, {
         method: "POST",
@@ -467,7 +479,7 @@ async function requestOpenAIResponse(
           "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(OPENAI_REQUEST_TIMEOUT_MS),
+        signal: AbortSignal.timeout(attemptTimeoutMs),
       });
 
       const raw = await response.text();
@@ -480,6 +492,7 @@ async function requestOpenAIResponse(
           (errorData ? extractOpenAIError(errorData) : null) ||
           summarizeUpstreamBody(raw, response.status) ||
           "OpenAI request failed.";
+        lastErrorMessage = normalizeUpstreamErrorMessage(lastErrorMessage, response.status);
 
         console.error("chat_upstream_http_error", {
           attempt,
@@ -489,7 +502,13 @@ async function requestOpenAIResponse(
         });
 
         if (shouldRetry(response.status, attempt)) {
-          await sleep(250 * (attempt + 1));
+          const delayMs = Math.min(
+            getRetryDelayMs(response.status, attempt),
+            Math.max(0, deadline - Date.now() - 200),
+          );
+          if (delayMs > 0) {
+            await sleep(delayMs);
+          }
           continue;
         }
 
@@ -523,6 +542,7 @@ async function requestOpenAIResponse(
     } catch (error) {
       lastStatus = 502;
       lastErrorMessage = formatThrownError(error);
+      lastErrorMessage = normalizeUpstreamErrorMessage(lastErrorMessage, lastStatus);
 
       console.error("chat_upstream_fetch_error", {
         attempt,
@@ -531,7 +551,13 @@ async function requestOpenAIResponse(
       });
 
       if (shouldRetry(lastStatus, attempt)) {
-        await sleep(250 * (attempt + 1));
+        const delayMs = Math.min(
+          getRetryDelayMs(lastStatus, attempt),
+          Math.max(0, deadline - Date.now() - 200),
+        );
+        if (delayMs > 0) {
+          await sleep(delayMs);
+        }
         continue;
       }
     }
@@ -539,7 +565,7 @@ async function requestOpenAIResponse(
 
   return {
     ok: false,
-    error: `上游聊天服务暂时不可用：${lastErrorMessage}`,
+    error: normalizeUpstreamErrorMessage(lastErrorMessage, lastStatus),
     status: lastStatus,
   };
 }
@@ -919,7 +945,7 @@ function normalizeUpstreamStatus(status: number): number {
 }
 
 function shouldRetry(status: number, attempt: number): boolean {
-  return attempt < OPENAI_RETRY_COUNT && status >= 500;
+  return attempt + 1 < OPENAI_MAX_ATTEMPTS && (status === 429 || status >= 500);
 }
 
 function formatThrownError(error: unknown): string {
@@ -934,6 +960,41 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+function getRetryDelayMs(status: number, attempt: number): number {
+  const base = status === 429 ? 900 : 350;
+  const jitter = Math.floor(Math.random() * 180);
+  return base * (attempt + 1) + jitter;
+}
+
+function normalizeUpstreamErrorMessage(message: string, status: number): string {
+  const trimmed = message.trim();
+  if (!trimmed) {
+    return `Upstream service unavailable (HTTP ${status}). Please retry.`;
+  }
+
+  if (status === 429) {
+    return "Too many requests. Please retry.";
+  }
+
+  if (status >= 500) {
+    const lower = trimmed.toLowerCase();
+    const isGeneric =
+      lower.startsWith("error code:") ||
+      lower === "bad gateway" ||
+      lower === "service unavailable" ||
+      lower === "gateway timeout";
+
+    if (isGeneric || trimmed.length <= 32) {
+      return `Upstream service unavailable (HTTP ${status}). Please retry.`;
+    }
+
+    const preview = trimmed.length > 180 ? `${trimmed.slice(0, 180)}...` : trimmed;
+    return `Upstream service unavailable (HTTP ${status}): ${preview}`;
+  }
+
+  return trimmed;
 }
 
 function isSecureRequest(request: Request): boolean {
