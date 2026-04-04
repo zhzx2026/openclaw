@@ -16,55 +16,24 @@
     <script type="module" src="/app.js"></script>
   </head>
   <body>
-    <div class="page-noise"></div>
-    <div class="page-glow glow-a"></div>
-    <div class="page-glow glow-b"></div>
-
     <div class="app-shell">
-      <header class="topbar">
-        <div class="topbar-brand">
-          <p class="eyebrow">OpenClaw / Edge Workspace</p>
-          <h1 id="appName">OpenClaw Chat</h1>
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="brand-badge">OC</div>
+          <div class="brand-copy">
+            <p class="eyebrow">OpenClaw Workspace</p>
+            <h1>OpenClaw Chat</h1>
+          </div>
         </div>
-        <div class="topbar-badges">
-          <span class="badge">Password Login</span>
-          <span class="badge">R2 Attachments</span>
-          <span class="badge">Worker + Responses</span>
-        </div>
-      </header>
 
-      <div class="workspace">
-        <aside class="column column-left">
-          <section class="card manifesto">
-            <p class="eyebrow">Mission Control</p>
-            <h2>把提问、图片和资料放进同一个工作台。</h2>
-            <p class="lead">
-              这不是普通聊天框，而是一个面向文件协作的 Cloudflare Worker 控制台。
-              登录后，上传的图片、PDF 和文本资料都能直接变成上下文。
-            </p>
-            <div class="signal-grid">
-              <div class="signal-tile">
-                <span class="signal-label">入口</span>
-                <strong>密码保护</strong>
-              </div>
-              <div class="signal-tile">
-                <span class="signal-label">附件</span>
-                <strong>上传 / 下载</strong>
-              </div>
-              <div class="signal-tile">
-                <span class="signal-label">内核</span>
-                <strong>OpenClaw</strong>
-              </div>
-            </div>
-          </section>
-
-          <section class="card" id="sessionPanel">
-            <div class="card-head">
+        <div class="sidebar-rail">
+          <section class="sidebar-panel" id="sessionPanel">
+            <div class="panel-head">
               <div>
                 <p class="eyebrow">Access</p>
-                <h2>登录状态</h2>
+                <h2>登录到工作台</h2>
               </div>
-              <span class="status-dot"></span>
+              <span class="status-pill">Private</span>
             </div>
 
             <form id="loginForm" class="stack">
@@ -95,95 +64,34 @@
             </form>
 
             <div id="sessionSummary" class="stack hidden">
-              <p class="pill">已登录</p>
-              <p class="hint">会话由安全 cookie 维护，附件会保存到 R2 对象存储。</p>
+              <div class="session-chip">
+                <span class="session-dot"></span>
+                <span>已登录</span>
+              </div>
+              <p class="hint">会话由安全 cookie 维护，附件存储在 Cloudflare R2。</p>
               <button class="ghost-button" type="button" id="logoutButton">
                 退出登录
               </button>
             </div>
           </section>
-        </aside>
 
-        <main class="column conversation-column">
-          <section class="card stage">
-            <div class="stage-copy">
-              <p class="eyebrow">Conversation Stage</p>
-              <h2>让回复像工作流，不只是回话。</h2>
-            </div>
-            <div class="stage-markers">
-              <span class="marker">Context-Aware</span>
-              <span class="marker">Attachment-Ready</span>
-            </div>
-          </section>
-
-          <section id="noticeBanner" class="notice hidden"></section>
-
-          <section id="messages" class="messages card">
-            <article class="empty-state" id="emptyState">
-              <p class="eyebrow">Ready When You Are</p>
-              <h3>先登录，再发出第一条问题。</h3>
-              <p>
-                右侧可以上传文件、管理附件、把资料附到消息里。中间区域专门用于整理对话过程。
-              </p>
-            </article>
-          </section>
-
-          <form id="composer" class="composer card disabled">
-            <div class="composer-intro">
-              <p class="eyebrow">Prompt Deck</p>
-              <p class="hint" id="composerHint">Enter 发送，Shift + Enter 换行。</p>
-            </div>
-            <label class="sr-only" for="messageInput">消息内容</label>
-            <textarea
-              id="messageInput"
-              rows="4"
-              placeholder="描述你的任务、你希望参考的文件，或者直接发出问题。"
-            ></textarea>
-            <div class="composer-bar">
-              <div class="composer-tip">
-                <span class="tip-line"></span>
-                <span>对话会保存在当前浏览器里，方便继续接着聊。</span>
-              </div>
-              <button class="primary-button" type="submit" id="sendButton">
-                发送
-              </button>
-            </div>
-          </form>
-        </main>
-
-        <aside class="column column-right">
-          <section class="card disabled" id="libraryPanel">
-            <div class="card-head">
+          <section class="sidebar-panel disabled" id="libraryPanel">
+            <div class="panel-head">
               <div>
-                <p class="eyebrow">Asset Dock</p>
-                <h2>附件工作区</h2>
+                <p class="eyebrow">Files</p>
+                <h2>附件与资料</h2>
               </div>
-              <span class="muted" id="fileCount">0 个文件</span>
+              <span class="sidebar-meta" id="fileCount">0 个文件</span>
             </div>
 
             <label class="upload-zone" for="fileInput" id="uploadZone">
               <input id="fileInput" type="file" multiple />
-              <strong>拖入或点击上传文件</strong>
-              <span>图片、PDF、Markdown、TXT 等常见资料都能直接进入聊天上下文。</span>
+              <strong>上传图片或文件</strong>
+              <span>支持下载，常见图片 / PDF / 文本文件可直接参与对话。</span>
             </label>
 
-            <div class="dock-card">
-              <div class="card-head compact">
-                <div>
-                  <p class="eyebrow">Queue</p>
-                  <h3>本条消息将附带</h3>
-                </div>
-                <button class="text-button" type="button" id="clearPendingButton">
-                  清空
-                </button>
-              </div>
-              <div id="pendingAttachments" class="chip-wrap">
-                <p class="hint">还没有附带任何文件。</p>
-              </div>
-            </div>
-
-            <div class="dock-card file-dock">
-              <div class="card-head compact">
+            <div class="library-block">
+              <div class="panel-head compact">
                 <div>
                   <p class="eyebrow">Library</p>
                   <h3>最近上传</h3>
@@ -194,8 +102,89 @@
               </div>
             </div>
           </section>
-        </aside>
-      </div>
+        </div>
+
+        <div class="sidebar-footer">
+          <span>Cloudflare Worker</span>
+          <span>R2 Attachments</span>
+        </div>
+      </aside>
+
+      <main class="chat-layout">
+        <header class="chat-header">
+          <div class="chat-header-copy">
+            <p class="eyebrow">OpenClaw</p>
+            <h2 id="appName">OpenClaw Chat</h2>
+          </div>
+          <div class="header-actions">
+            <span class="header-chip">Password Login</span>
+            <span class="header-chip">Responses API</span>
+          </div>
+        </header>
+
+        <section id="noticeBanner" class="notice hidden"></section>
+
+        <section id="messages" class="messages">
+          <article class="empty-state" id="emptyState">
+            <div class="empty-copy">
+              <h3>今天想让 OpenClaw 帮你处理什么？</h3>
+              <p>先登录，然后直接提问，或者上传图片、PDF、Markdown、TXT 再一起发给它。</p>
+            </div>
+            <div class="suggestion-grid">
+              <div class="suggestion-card">
+                <span class="suggestion-label">分析资料</span>
+                <p>总结我刚上传的 PDF，列出 5 个重点。</p>
+              </div>
+              <div class="suggestion-card">
+                <span class="suggestion-label">图片理解</span>
+                <p>看看这张图片里有什么，并帮我写说明。</p>
+              </div>
+              <div class="suggestion-card">
+                <span class="suggestion-label">文档改写</span>
+                <p>结合附件内容，把这段话改成正式版本。</p>
+              </div>
+              <div class="suggestion-card">
+                <span class="suggestion-label">问答</span>
+                <p>根据我附带的文件回答问题，答不上来就直说。</p>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <form id="composer" class="composer disabled">
+          <div class="composer-shell">
+            <div class="composer-topline">
+              <div>
+                <p class="eyebrow">Message</p>
+                <p class="hint" id="composerHint">Enter 发送，Shift + Enter 换行。</p>
+              </div>
+              <button class="clear-button" type="button" id="clearPendingButton">
+                清空附件
+              </button>
+            </div>
+
+            <div class="attachment-tray">
+              <div id="pendingAttachments" class="chip-wrap">
+                <p class="hint">还没有附带任何文件。</p>
+              </div>
+            </div>
+
+            <label class="sr-only" for="messageInput">消息内容</label>
+            <textarea
+              id="messageInput"
+              rows="4"
+              placeholder="给 OpenClaw 发送消息"
+            ></textarea>
+
+            <div class="composer-bar">
+              <p class="hint">文件从左侧上传，附加后的资料会一起进入上下文。</p>
+              <button class="primary-button" type="submit" id="sendButton">
+                发送
+              </button>
+            </div>
+          </div>
+        </form>
+      </main>
     </div>
   </body>
 </html>
